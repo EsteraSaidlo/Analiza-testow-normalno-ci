@@ -1,0 +1,371 @@
+---
+title: "Projekt-1"
+author: "Estera Saidlo, Mateusz Jalocha"
+date: "11 marca 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<h1>Wprowadzenie i hipotezy</h1></br>
+  Przeprowadzajac analize testow normalnosci w zaleznosci od dlugosci proby, stopni swobody i poziomu istotnosci dla rozkladu t-Studenta skupilismy siÍ na trzech waznych testach: Shapiro-Wilka, Jarque-Bera oraz Kolmogorowa-Smirnowa.<br/>
+
+1. <b>Test Shapiro-Wilka</b> - uznawany jest za najlepszy test do sprawdzenia normalnosci rozkladu zmiennej losowej. Jego glownym atutem jest duza moc, tzn. dla ustalonego poziomu istotnosci (alfa) prawdopodobienstwo odrzucenia H0, jesli jest ona falszywa jest wieksze niz w przypadku innych testow tego typu. Moze byc stosowany do malych prob i ma niestandardowy rozklad w zaleznosci od licznosci proby. Hipotezy zerowa oraz alternatywna sπ w nim nastepujπce:<br/>
+
+  H0: Rozklad badanej cechy jest rozkladem normalnym.</br>
+  H1: Rozklad badanej cechy nie jest rozkladem normalnym.</br>
+  
+2. <b>Test Jarque-Bera</b> - opiera sie na obserwacji, ze rozklad normalny jest symetryczny i ma kurtoze rowna 3. Przy zalozeniu prawdziwosci H0 statystyka Jarque-Bera ma asymptotyczny rozklad Chi^2 o 2 stopniach swobody. Hipotezy zerowa oraz alternatywna sπ w nim nastepujπce:<br/>
+
+  H0: Rozklad badanej cechy jest rozkladem normalnym.</br>
+  H1: Rozklad badanej cechy nie jest rozkladem normalnym.</br>
+  
+3. <b>Test Kolmogorowa-Smirnowa</b> - najwazniejszy test badajacy zgodnosc rozkladu empirycznego (z probki) z rozkladem teoretycznym. Najczesciej uzywany do sprawdzenia czy rozklad zmiennej jest zgodny z rozkladem normalnym. Bazuje na maksymalnej roznicy miedzy rozkladem empirycznym i teoretycznym. Nalezy go stosowac jesli znana jest srednia i odchylenie standardowe z populacji (w innym zalecane jest stosowanie tego testu z poprawka Lilieforsa). Hipotezy zerowa oraz alternatywna sπ w nim nastepujπce:<br/>
+
+  H0: Rozklad badanej cechy jest rozkladem normalnym.</br>
+  H1: Rozklad badanej cechy nie jest rozkladem normalnym.</br>
+  
+Hipotezy dla wybranych przez nas testow:<br/>
+  1. Wraz ze wzrostem wielkosci proby  moc testu rosnie - poniewaz mamy wtedy mniejsza wartosc bledu losowego(liczba populacji-wartosc proby).<br/>
+  2. Wraz ze wzrostem stopni swobody moc testu maleje - poniewaz liczba stopni swobody okresla ile zmiennych moze sie zmieniac niezaleznie od zmiennych losowych, ktore wplywaja na wynik. Dlatego im wiecej jest zmiennych niezaleznie zmieniajacych sie tym moc testu jest mniejsza.<br/>
+  3. Wraz ze wzrostem poziomu istotnosci moc testu rosnie - poniewaz porownujemy go z obliczona z testu wartoscia p-value, a w zwiazku z wieksza wartoúcia zwieksza sie prawdopodobienstwo odrzucenia falszywej hipotezy H0, to zwieksza sie rowniez moc testu.<br/>
+
+W projekcie przyjme za ilosc stopni swobody rozkladu t-Studenta liczbe 3, gdyz rozklad najmniej przypomina wtedy rozklad normalny.<br/>
+
+<h3>Korzystamy z nastepujacych bibliotek:</h3><br/>
+```{r, message=FALSE,warning=FALSE}
+library(ggplot2)
+library(normtest)
+library(tseries)
+library(dplyr)
+library(tidyr)
+library(reshape2)
+```
+<h3>Wplyw poziomu istotnosci na moc testow</h3><br/>
+Parametry:<br/> 
+-poziom istotnosci:seq(0.01, 1,by=0.01)<br/>
+-stopnie swobody: 3<br/>
+-dlugosc proby:100 <br/>
+-liczba symulacji: 1000<br/>
+
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+#ilosc symulacji
+N <- 1000
+
+#Stopnie swobody
+df <- 3
+#poziomy istotnosci
+alpha <- seq(0.01, 1,by=0.01)
+#liczba obserwacji
+liczbaObserwacji <- 100
+
+#Shapiro-Wilka-poziom istotnosci
+power7 <- tibble(p = 0)
+for(x in alpha){
+  p_vector7 <- sapply(rep(df, N), function(x){
+    my_sample <- rt(liczbaObserwacji, df=df)
+    shapiro.test(my_sample)$p.value
+  })
+}
+power7 <- bind_rows(power7, tibble(p=p_vector7))
+
+power7 <- power7 %>% filter(p > 0)
+
+power_pi1 <- tibble(power = 0)
+for(x in alpha)
+{
+  power_a <- power7 %>%
+    summarise(power = mean(p < x))
+  power_pi1 <- bind_rows(power_pi1, power_a)
+}
+
+power_pi1 <- power_pi1 %>% filter(power > 0)
+power_pi1 <- bind_cols(power_pi1, alpha = alpha)
+
+power_pi1 %>%
+  ggplot(aes(x = alpha, y = power)) +
+  geom_line()+
+  ggtitle("Test Shapiro-Wilka")
+
+#Jarque Bera-poziom istotnosci
+power8 <- tibble(p = 0)
+for(x in alpha){
+  p_vector8 <- sapply(rep(df, N), function(x){
+    my_sample <- rt(liczbaObserwacji, df)
+    jarque.bera.test(my_sample)$p.value
+  })
+}
+power8 <- bind_rows(power8, tibble(p = p_vector8))
+
+power8 <- power8 %>% filter(p > 0)
+
+power_pi2 <- tibble(power = 0)
+for(x in alpha)
+{
+  power_a <- power8 %>%
+    summarise(power = mean(p < x))
+  power_pi2 <- bind_rows(power_pi2, power_a)
+}
+
+power_pi2 <- power_pi2 %>% filter(power > 0)
+power_pi2 <- bind_cols(power_pi2, alpha = alpha)
+
+
+
+power_pi2 %>%
+  ggplot(aes(x = alpha, y = power)) +
+  geom_line()+
+  ggtitle("Test Jarque-Bera")
+
+#Ko≈Çmogorowa-Smirnowa-poziom istotnosci
+power9 <- tibble(p = 0)
+
+for(x in alpha){
+  p_vector9 <- sapply(rep(df, N), function(x){
+    my_sample <- rt(liczbaObserwacji, df)
+    ks.test(my_sample,"pnorm")$p.value
+  })
+}
+
+power9 <- bind_rows(power9, tibble(p = p_vector9))
+
+power9 <- power9 %>% filter(p > 0)
+
+power_pi3 <- tibble(power = 0)
+for(x in alpha)
+{
+  power_a <- power9 %>%
+    summarise(power = mean(p < x))
+  power_pi3 <- bind_rows(power_pi3, power_a)
+}
+
+power_pi3 <- power_pi3 %>% filter(power > 0)
+power_pi3 <- bind_cols(power_pi3, alpha = alpha)
+
+
+
+power_pi3 %>%
+  ggplot(aes(x = alpha, y = power)) +
+  geom_line()+
+  ggtitle("Test Kolmogorowa-Smirnowa")
+
+
+powers <- data.frame(SWpow = power_pi1$power, JBpow = power_pi2$power, 
+                     KSpow = power_pi3$power, alpha = alpha)
+
+mpowers <- melt(powers, id = "alpha")
+mpowers %>%ggplot(aes(x = alpha, y = value, 
+                      colour = variable))+
+  geom_line(size = 2) + labs(y="power")
+
+
+
+```
+<br/><b>Interpretacja:</b><br/>
+Moc testu rzeczywiscie rosnie wraz ze wzrostem poziomu istotnosci. Wykresy Shapiro-Wilka i Jarque-Bera sa do siebie podobne i od poczatku juz maja duza moc(ok. 0.75), co mozna zauwazyc na potrojnym wykresie. Moc testu Kolmogorowa-Smirnowa rosnie najwolniej. 
+
+<h3>Wplyw dlugosci proby na moc testow</h3><br/>
+Parametry:<br/>
+-poziom istotnosci: 0.05<br/>
+-stopnie swobody: 3<br/>
+-dlugosc proby: seq(10, 1000, by = 5)<br/>
+-liczba symulacji: 1000<br/>
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+#ilosc symulacji
+N <- 1000
+
+#Stopnie swobody
+df <- 3
+#poziomy istotnosci
+alphas <- 0.05
+#liczba obserwacji
+liczbaObserwacji <- seq(10, 1000, by = 5)
+
+#Shapiro-Wilka-l.obserwacji
+power4 <- tibble(p = 1, liczbaObserwacji = 0)
+for(x in liczbaObserwacji){
+  p_vector4 <- sapply(rep(x, N), function(x){
+    my_sample <- rt(x, df)
+    shapiro.test(my_sample)$p.value
+  })
+  
+  tmp_lO <- tibble(p = p_vector4, liczbaObserwacji = x)
+  power4 <- bind_rows(power4, tmp_lO)
+}
+
+power4 <- power4 %>% filter(liczbaObserwacji > 0)
+
+power_lO1 <- power4 %>%
+  group_by(liczbaObserwacji) %>%
+  summarise(power = mean(p < alphas))
+
+power_lO1 %>%
+  ggplot(aes(x = liczbaObserwacji, y = power)) +
+  geom_line()+
+  ggtitle("Test Shapiro-Wilka")
+
+#Jarque Bera-l.obserwacji
+power5 <- tibble(p = 1, liczbaObserwacji = 0)
+for(x in liczbaObserwacji){
+  p_vector5 <- sapply(rep(x, N), function(x){
+    my_sample <- rt(x, df)
+    jarque.bera.test(my_sample)$p.value
+  })
+  
+  tmp_lO <- tibble(p = p_vector5, liczbaObserwacji = x)
+  power5 <- bind_rows(power5, tmp_lO)
+}
+
+power5 <- power5 %>% filter(liczbaObserwacji > 0)
+
+power_lO2 <- power5 %>%
+  group_by(liczbaObserwacji) %>%
+  summarise(power = mean(p < alphas))
+
+power_lO2 %>%
+  ggplot(aes(x = liczbaObserwacji, y = power)) +
+  geom_line()+
+  ggtitle("Test Jarque-Bera")
+
+#Ko≈Çmogorowa-Smirnowa-l.obserwacji
+power6 <- tibble(p = 1, liczbaObserwacji = 0)
+for(x in liczbaObserwacji){
+  p_vector6 <- sapply(rep(x, N), function(x){
+    my_sample <- rt(x, df)
+    ks.test(my_sample,"pnorm")$p.value
+  })
+  
+  tmp_lO <- tibble(p = p_vector6, liczbaObserwacji = x)
+  power6 <- bind_rows(power6, tmp_lO)
+}
+
+power6 <- power6 %>% filter(liczbaObserwacji > 0)
+
+power_lO3 <- power6 %>%
+  group_by(liczbaObserwacji) %>%
+  summarise(power = mean(p < alphas))
+
+power_lO3 %>%
+  ggplot(aes(x = liczbaObserwacji, y = power)) +
+  geom_line()+
+  ggtitle("Test Kolmogorowa-Smirnowa")
+
+params<-data.frame(power_lO1[,2], power_lO2[,2], power_lO3[,2], liczbaObserwacji)
+  names(params)=c("moc SW", "moc JB", "moc KS", "liczbaObserwacji")
+  mparams<-melt(params, id="liczbaObserwacji")
+  ggplot(data=mparams,
+         aes(x=liczbaObserwacji, y=value, colour=variable))+
+    geom_line(size = 2)
+```
+<br/><b>Interpretacja:</b><br/>
+Wraz ze wzrostem liczby obserwacji moc testu rosnie. Testy Shapiro-Wilka i Jarque-Bera osiagaja 1 juz przy 250 obserwacjach. Kolmogorowa-Smirnowa rosnie zdecydowanie wolniej i osiaga 1 dopiero przy 1000 obserwacji.
+
+
+<h3>Wplyw stopni swobody na moc testow</h3><br/>
+Parametry:<br/>
+-poziom istotnosci: 0.05<br/>
+-stopnie swobody: seq(1, 100, by = 1)<br/>
+-dlugosc proby: 100<br/>
+-liczba symulacji: 1000<br/>
+```{r, echo=FALSE, message=FALSE,warning=FALSE}
+#ilosc symulacji
+N <- 1000
+
+#Stopnie swobody
+df <- seq(1, 100, by = 1)
+#poziomy istotnosci
+alphas <- 0.05
+#liczba obserwacji
+liczbaObserwacji <- 100
+
+
+#Shapiro-Wilka-stopnie swobody
+power1 <- tibble(p = 1, df = 0)
+for(x in df){
+  p_vector1 <- sapply(rep(x, N), function(x){
+    my_sample <- rt(liczbaObserwacji, x)
+    shapiro.test(my_sample)$p.value
+  })
+  
+  tmp_df <- tibble(p = p_vector1, df = x)
+  power1 <- bind_rows(power1, tmp_df)
+}
+
+power1 <- power1 %>% filter(df > 0)
+
+power_df1 <- power1 %>%
+  group_by(df) %>%
+  summarise(power = mean(p < alphas))/N
+
+power_df1 %>%
+  ggplot(aes(x = df, y = power)) +
+  geom_line()+
+  ggtitle("Test Shapiro-Wilka")
+
+#Jarque Bera-stopnie swobody
+power2 <- tibble(p = 1, df = 0)
+for(x in df){
+  p_vector2 <- sapply(rep(x, N), function(x){
+    my_sample <- rt(liczbaObserwacji, x)
+    jarque.bera.test(my_sample)$p.value
+  })
+  
+  tmp_df <- tibble(p = p_vector2, df = x)
+  power2 <- bind_rows(power2, tmp_df)
+}
+
+power2 <- power2 %>% filter(df > 0)
+
+power_df2 <- power2 %>%
+  group_by(df) %>%
+  summarise(power = mean(p < alphas))/N
+
+power_df2 %>%
+  ggplot(aes(x = df, y = power)) +
+  geom_line()+
+  ggtitle("Test Jarque-Bera")
+
+#Ko≈Çmogorowa-Smirnowa-stopnie swobody
+power3 <- tibble(p = 1, df = 0)
+for(x in df){
+  p_vector3 <- sapply(rep(x, N), function(x){
+    my_sample <- rt(liczbaObserwacji, x)
+    ks.test(my_sample,"pnorm")$p.value
+  })
+  
+  tmp_df <- tibble(p = p_vector3, df = x)
+  power3 <- bind_rows(power3, tmp_df)
+}
+
+power3 <- power3 %>% filter(df > 0)
+
+power_df3 <- power3 %>%
+  group_by(df) %>%
+  summarise(power = mean(p < alphas))/N
+
+
+power_df3 %>%
+  ggplot(aes(x = df, y = power)) +
+  geom_line()+
+  ggtitle("Test Kolmogorowa-Smirnowa")
+
+params<-data.frame(power_df1[,2], power_df2[,2], power_df3[,2], df)
+  names(params)=c("moc SW", "moc JB", "moc KS", "df")
+  mparams<-melt(params, id="df")
+  ggplot(data=mparams,
+         aes(x=df, y=value, colour=variable))+
+    geom_line(size = 2)
+```
+<br/><b>Interpretacja:</b><br/>
+Kiedy liczba stopni swobody rosnie to moc testu maleje. Wszystke testy sa do siebie podobne, jednak Kolmogorowa-Smirnowa maleje njszybciej. Juz przy ok. 3 stopniach swobody oscyluje w granicy poziomu istotnosci.
+
+<br/><br/>
+<h3>Podsumowanie</h3>
+Przedstawione wyniki potwierdzily postawione przez nas hipotezy:<br/>
+-Moc testu rosnie wraz ze wzrostem poziomu istotnosci.<br/>
+-Moc testu rosnie wraz ze wzrostem liczby obserwacji.<br/>
+-Moc testu maleje wraz ze wzrostem liczby stopni swobody.<br/>
+Dodatkowo zauwazylismy podobienstwo w testach Shapiro-Wilka i Jarque-Bera. Test Kolmogorowa-Smirnowa jest od nich slabszy.<br/>
+Wplyw na analize mogly miec nieodpwiednio dobrane przez nas parametry.
